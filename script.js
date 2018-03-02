@@ -1,124 +1,106 @@
-var c = document.getElementById("myCanvas");
-var ctx = c.getContext("2d");
+$(document).ready(function() {
+var canvas = $("#myCanvas")[0];
+var ctx = canvas.getContext("2d");
 
-var x = c.width / 2;
-var y = c.width - 250;
-var right = false;
-var left = false;
-var up = false;
-var down = false;
-var rightStop = false;
-var leftStop = false;
-var upStop = false;
-var downStop = false;
-var lastRight = false;
-var lastLeft = false;
-var lastUp = false;
-var lastDown = false;
-var firstKeyCount = 0
-var X = 0;
-var X = 0;
+var w = 500; var h = 500;
 
-document.addEventListener("keydown", keyDownHandler, false);
+var cellSize = 10;
+var direction;
+var snakeArray = [];
+var food = {};
+var score = 0;
+var scoreText;
 
-function keyDownHandler(e) {
-    if (e.keyCode == 39 && rightStop == false) { // right
-        right = true
-        left = false;
-        up = false;
-        down = false;
-        leftStop = true;
-        rightStop = false;
-        upStop = false;
-        downStop = false;
-        lastRight = true;
-    } else if (e.keyCode == 37 && leftStop == false) { //left
-        right = false
-        left = true;
-        up = false;
-        down = false;
-        rightStop = true;
-        leftStop = false;
-        upStop = false;
-        downStop = false;
-        lastLeft = true;
-    } else if (e.keyCode == 38 && upStop == false) { // up
-        right = false
-        left = false;
-        up = true;
-        down = false;
-        downStop = true;
-        upStop = false;
-        leftStop = false;
-        rightStop = false;
-        lastUp = true;
-    } else if (e.keyCode == 40 && downStop == false) { // down
-        right = false;
-        left = false;
-        up = false;
-        down = true;
-        upStop = true
-        downStop = false;
-        leftStop = false;
-        rightStop = false;
-        lastDown = true;
-    }
+function init() {
+    direction = "right";
+    score = 0;
+    createSnake();
+    createFood();
+
+    if(typeof gameLoop != "undefined") clearInterval(paint);
+    gameLoop = setInterval(paint, 50);
 }
 
-function Snake() {    
-    ctx.beginPath()
-    ctx.rect(x, y, 5, 5);
-    ctx.fill();
-    ctx.closePath();
-        
-    if (right) {
-        firstKeyCount ++;
-        x += 0.2;
-        ctx.clearRect(x - 20, y, 6, 6)
-    } else if (right && lastRight == true) { // removes from bottom and left 
-        y -= 0.2;
-        ctx.clearRect(x + 20, y + 20, 6, 6);
-    } else if (right && lastLeft == true) { // removes from bottom and right 
-        y -= 0.2;
-        ctx.clearRect(x - 20, y + 20, 6, 6);
-    }
+init();
 
-    if (left) {
-        x -= 0.2
-        ctx.clearRect(x + 20, y, 6, 6);
-    } else if (left && lastRight == true) { // removes from bottom and left 
-        y -= 0.2;
-        ctx.clearRect(x + 20, y + 20, 6, 6);
-    } else if (left && lastLeft == true) { // removes from bottom and right 
-        y -= 0.2;
-        ctx.clearRect(x - 20, y + 20, 6, 6);
-    }
-
-    if (up && lastRight == false && lastLeft == false) { // removes from bottom
-        y -= 0.2;
-        ctx.clearRect(x, y + 20, 6, 6)
-    } else if (up && lastRight == true) { // removes from bottom and left 
-        y -= 0.2;
-        ctx.clearRect(x - 20, y + 20, 6, 6);
-    } else if (up && lastLeft == true) { // removes from bottom and right 
-        y -= 0.2;
-        ctx.clearRect(x - 20, y + 20, 6, 6);
-    }
-
-    if (down) {
-        y += 0.2;
-        ctx.clearRect(x, y - 20, 7, 7)
-    } else if (down && lastRight == true) { // removes from bottom and left 
-        y -= 0.2;
-        ctx.clearRect(x + 20, y + 20, 7, 7);
-    } else if (down && lastLeft == true) { // removes from bottom and right 
-        y -= 0.2;
-        ctx.clearRect(x - 20, y + 20, 7, 7);
-    }
+function createFood() {
+    food = {
+        x: Math.round(Math.random()*(w-cellSize)/cellSize), 
+        y: Math.round(Math.random()*(w-cellSize)/cellSize)
+    };
 }
 
-function draw() {
-    Snake()
+function createSnake() {    
+    var length = 5;
+    snakeArray = [];
+    for (var i = length; i > 0; i--) {
+        snakeArray.push({x: i, y: 0});
+    }
+}
+    
+function paint() {    
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(0, 0, w, h);
+    
+    var nx = snakeArray[0].x;
+    var ny = snakeArray[0].y;
+
+    if(direction == "right") nx ++;
+    else if (direction == "left") nx --;
+    else if (direction == "up") ny --;
+    else if (direction == "down") ny ++;
+
+    if (nx == -1 || nx == w/10 || ny == -1 || ny == h/10 || snakeCollision(nx, ny, snakeArray)) {
+        init();
+        return;
+    }
+
+    if (nx == food.x && ny == food.y) {
+        var tail = {x: nx, y: ny};
+        createFood();
+        score ++
+    } else {
+        var tail = snakeArray.pop;
+        tail.x = nx; tail.y = ny;
+    }
+
+    snakeArray.unshift(tail);
+
+    for (var i = 0; i < snakeArray.length; i ++) {
+        var c = snakeArray[i];
+        drawFood(c.x, c.y);
+    }
+
+    drawFood(food.x, food.y);
+
+    scoreText = "Score " + score;
+    ctx.fillText(scoreText, 5, h-5);
+
 }
 
-var Interval = setInterval(draw, 10);
+function drawFood(x, y) {
+    ctx.fillStyle = "black";
+    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    ctx.strokeStyle = "white";
+    ctx.strokeRect(x*cellSize, y*cellSize, cellSize, cellSize);
+}
+
+function snakeCollision(x, y, array) {
+    for (var i = 0; i<array.length; i++) {
+        if(array[i].x == x && array[i]. y == y) 
+            return true;
+        }
+    return false;
+}
+
+$(document).keydown(function(e) {
+    var key = e.which;
+    if(key == "37" && direction != "right") direction = "left";
+    else if(key == "38" && direction != "down") direction = "up";
+    else if(key == "39" && direction != "left") direction = "right";
+    else if(key == "40" && direction != "up") direction = "down";
+})
+
+})
